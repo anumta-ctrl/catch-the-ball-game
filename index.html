@@ -72,6 +72,19 @@
       border-radius: 15px;
       display: none;
     }
+
+    html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
   </style>
 </head>
 <body>
@@ -83,7 +96,7 @@
   <div id="levelUpMsg">Level Up!</div>
   <button id="pauseButton">Pause</button>
   <button id="restartButton">Restart</button>
-  <canvas id="gameCanvas" width="480" height="640"></canvas>
+  <canvas id="gameCanvas"></canvas>
 
   <!-- Sounds -->
   <audio id="catchSound" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
