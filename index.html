@@ -44,8 +44,8 @@
       font-size: 16px;
       cursor: pointer;
     }
-    #pauseButton { left: 50%; transform: translateX(-110%); }
-    #restartButton { left: 50%; transform: translateX(10%); }
+    #pauseButton { left: 90%; bottom: 10%; }
+    #restartButton { left: 90%; }
 
     #countdown {
       position: absolute;
@@ -72,19 +72,6 @@
       border-radius: 15px;
       display: none;
     }
-
-    html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-canvas {
-  display: block;
-  width: 100vw;
-  height: 100vh;
-}
-
   </style>
 </head>
 <body>
@@ -96,7 +83,7 @@ canvas {
   <div id="levelUpMsg">Level Up!</div>
   <button id="pauseButton">Pause</button>
   <button id="restartButton">Restart</button>
-  <canvas id="gameCanvas"></canvas>
+  <canvas id="gameCanvas" width="1370" height="640"></canvas>
 
   <!-- Sounds -->
   <audio id="catchSound" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
@@ -132,7 +119,7 @@ canvas {
     let levelUpTime = 0;
 
     function resetGame() {
-      basket = { x: canvas.width / 2 - 40, y: canvas.height - 40, width: 80, height: 30, speed: 6 };
+      basket = { x: canvas.width / 2 - 40, y: canvas.height - 40, width: 200, height: 30, speed: 6 };
       objects = [];
       obstacles = [];
       stars = [];
@@ -194,7 +181,7 @@ canvas {
       objects.push({
         x: Math.random() * (canvas.width - 20),
         y: -20,
-        size: 20,
+        size: 35,
         speed: gameSpeed,
         color: type.color,
         points: type.points
@@ -203,8 +190,8 @@ canvas {
         obstacles.push({
           x: Math.random() * (canvas.width - 30),
           y: -30,
-          width: 30,
-          height: 30,
+          width: 45,
+          height: 45,
           speed: gameSpeed + 1
         });
       }
@@ -373,3 +360,5 @@ canvas {
 
 
 
+
+  
