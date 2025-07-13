@@ -1,395 +1,223 @@
-
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="manifest" href="manifest.json" />
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('✅ Service Worker registered!', reg.scope))
-      .catch(err => console.log('❌ Service Worker registration failed:', err));
-  }
-</script>
-
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Catch the Falling Objects Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catch Falling Objects Game</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(function(registration) {
+        console.log('ServiceWorker registered:', registration.scope);
+      }).catch(function(error) {
+        console.log('ServiceWorker registration failed:', error);
+      });
+    }
+  </script>
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+    }
+    body {
+      font-family: sans-serif;
+      background: linear-gradient(to bottom, #a1c4fd, #c2e9fb);
       overflow: hidden;
-      font-family: Arial;
-      background: linear-gradient(to bottom, #87ceeb, #f0f8ff);
-      touch-action: none;
     }
     canvas {
       display: block;
-      background: #f0f8ff;
+      background-color: #ffffff;
     }
-    #score, #lives, #highScore, #level {
+    #level, #levelUpMsg, #scoreDisplay, #livesDisplay, #pauseBtn, #restartBtn {
       position: absolute;
-      top: 10px;
       font-size: 20px;
       color: #333;
+      z-index: 10;
     }
-    #score { left: 10px; }
-    #lives { right: 10px; }
-    #highScore { left: 50%; transform: translateX(-50%); }
-    #level { top: 40px; left: 10px; }
-
-    #pauseButton, #restartButton {
-      position: absolute;
-      bottom: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    #pauseButton { left: 90%; bottom: 10%; }
-    #restartButton { left: 90%; }
-
-    #countdown {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 48px;
-      color: #222;
-      background: rgba(255, 255, 255, 0.8);
-      padding: 20px 40px;
-      border-radius: 20px;
-      display: none;
-    }
-
     #levelUpMsg {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
       font-size: 36px;
       color: #ff4500;
+      display: none;
       background: white;
       padding: 20px;
       border-radius: 15px;
-      display: none;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #level { top: 10px; left: 10px; }
+    #scoreDisplay { top: 10px; right: 10px; }
+    #livesDisplay { top: 40px; right: 10px; }
+    #pauseBtn, #restartBtn {
+      padding: 10px 20px;
+      background: #eee;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #pauseBtn {
+      bottom: 60px;
+      right: 10px;
+    }
+    #restartBtn {
+      bottom: 10px;
+      right: 10px;
     }
   </style>
 </head>
 <body>
-  <div id="score">Score: 0</div>
-  <div id="highScore">High Score: 0</div>
-  <div id="lives">Lives: 3</div>
+  <canvas id="gameCanvas"></canvas>
   <div id="level">Level: 1</div>
-  <div id="countdown"></div>
+  <div id="scoreDisplay">Score: 0</div>
+  <div id="livesDisplay">Lives: 3</div>
   <div id="levelUpMsg">Level Up!</div>
-  <button id="pauseButton">Pause</button>
-  <button id="restartButton">Restart</button>
-  <canvas id="gameCanvas" width="1370" height="640"></canvas>
-
-  <!-- Sounds -->
-  <audio id="catchSound" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
-  <audio id="bgMusic" src="https://cdn.pixabay.com/audio/2023/05/12/audio_14ba5c2396.mp3" autoplay loop></audio>
-  <audio id="gameOverSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
-  <audio id="levelUpSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+  <button id="pauseBtn">Pause</button>
+  <button id="restartBtn">Restart</button>
 
   <script>
-  const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-// Set canvas to fill the screen
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-// Base game size (the size you designed for)
-let baseWidth = 480;
-let baseHeight = 640;
-
-// Calculate scale factor to fit screen
-let scale = Math.min(
-  window.innerWidth / baseWidth,
-  window.innerHeight / baseHeight
-);
-
-// Apply scale to context
-ctx.setTransform(scale, 0, 0, scale, 0, 0);
-
-// Optional: Handle screen resize (auto-rescale)
-window.addEventListener("resize", () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  scale = Math.min(
-    window.innerWidth / baseWidth,
-    window.innerHeight / baseHeight
-  );
-
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
-});
-
-    const scoreDisplay = document.getElementById("score");
-    const livesDisplay = document.getElementById("lives");
-    const highScoreDisplay = document.getElementById("highScore");
-    const levelDisplay = document.getElementById("level");
-    const countdownDiv = document.getElementById("countdown");
-    const levelUpMsg = document.getElementById("levelUpMsg");
-    const pauseButton = document.getElementById("pauseButton");
-    const restartButton = document.getElementById("restartButton");
-    const catchSound = document.getElementById("catchSound");
-    const gameOverSound = document.getElementById("gameOverSound");
-    const levelUpSound = document.getElementById("levelUpSound");
-
-    let basket, objects, obstacles, stars;
-    let score, lives, gameSpeed;
-    let keys = {};
-    let highScore = localStorage.getItem("highScore") || 0;
-    let paused = false, gameStarted = false, gameOverPlayed = false;
-
-    let level = 1;
-    let levelTimer = 0;
-    const levelDuration = 60000;
-    let showLevelUp = false;
-    let levelUpTime = 0;
-
-    function resetGame() {
-      basket = { x: canvas.width / 2 - 40, y: canvas.height - 40, width: 200, height: 30, speed: 6 };
-      objects = [];
-      obstacles = [];
-      stars = [];
-      score = 0;
-      lives = 3;
-      gameSpeed = 2;
-      level = 1;
-      levelTimer = Date.now();
-      showLevelUp = false;
-      levelUpTime = 0;
-      paused = false;
-      gameStarted = false;
-      gameOverPlayed = false;
-      pauseButton.textContent = "Pause";
-      startCountdown();
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     }
 
-    const objectTypes = [
-      { color: "red", points: 10 },
-      { color: "gold", points: 20 },
-      { color: "green", points: 15 }
-    ];
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
 
-    document.addEventListener("keydown", e => keys[e.key] = true);
-    document.addEventListener("keyup", e => keys[e.key] = false);
-    canvas.addEventListener("touchmove", e => {
-      const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      basket.x = touch.clientX - rect.left - basket.width / 2;
-    });
+    let score = 0;
+    let lives = 3;
+    let gameSpeed = 2;
+    let level = 1;
+    let paused = false;
+    let levelTimer = Date.now();
+    let showLevelUp = false;
+    let levelUpTime = 0;
+    let objects = [];
 
-    pauseButton.addEventListener("click", () => {
-      if (!gameStarted) return;
-      paused = !paused;
-      pauseButton.textContent = paused ? "Resume" : "Pause";
-    });
+    const catcher = {
+      width: canvas.width * 0.2,
+      height: 20,
+      x: canvas.width / 2 - (canvas.width * 0.2) / 2,
+      y: canvas.height - 40,
+      speed: canvas.width * 0.01
+    };
 
-    restartButton.addEventListener("click", resetGame);
+    const levelDuration = 60000;
+    const levelUpSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+    const catchSound = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
+    const gameOverSound = new Audio("https://actions.google.com/sounds/v1/cartoon/slide_whistle_to_drum_hit.ogg");
+    const bgMusic = new Audio("https://cdn.pixabay.com/audio/2023/05/12/audio_14ba5c2396.mp3");
+    bgMusic.loop = true;
+    bgMusic.volume = 0.5;
 
-    function startCountdown() {
-      let count = 3;
-      countdownDiv.style.display = "block";
-      countdownDiv.textContent = count;
-      const interval = setInterval(() => {
-        count--;
-        if (count > 0) countdownDiv.textContent = count;
-        else {
-          clearInterval(interval);
-          countdownDiv.style.display = "none";
-          gameStarted = true;
-          levelTimer = Date.now();
-        }
-      }, 1000);
+    function resetGame() {
+      score = 0;
+      lives = 3;
+      level = 1;
+      gameSpeed = 2;
+      levelTimer = Date.now();
+      showLevelUp = false;
+      objects = [];
+      paused = false;
+      bgMusic.play();
     }
 
     function spawnObject() {
-      if (lives <= 0 || paused || !gameStarted) return;
-      const type = objectTypes[Math.floor(Math.random() * objectTypes.length)];
       objects.push({
-        x: Math.random() * (canvas.width - 20),
-        y: -20,
-        size: 35,
-        speed: gameSpeed,
-        color: type.color,
-        points: type.points
+        x: Math.random() * (canvas.width - 30),
+        y: 0,
+        radius: canvas.width * 0.03,
+        color: '#' + Math.floor(Math.random()*16777215).toString(16),
+        speed: gameSpeed + Math.random()
       });
-      if (Math.random() < 0.3) {
-        obstacles.push({
-          x: Math.random() * (canvas.width - 30),
-          y: -30,
-          width: 45,
-          height: 45,
-          speed: gameSpeed + 1
-        });
-      }
     }
 
-    function spawnStar(x, y) {
-      for (let i = 0; i < 10; i++) {
-        stars.push({
-          x, y,
-          radius: Math.random() * 2 + 1,
-          dx: (Math.random() - 0.5) * 4,
-          dy: (Math.random() - 1.5) * 4,
-          alpha: 1
-        });
-      }
-    }
-
-    function updateStars() {
-      for (let i = stars.length - 1; i >= 0; i--) {
-        const s = stars[i];
-        s.x += s.dx;
-        s.y += s.dy;
-        s.alpha -= 0.02;
-        if (s.alpha <= 0) stars.splice(i, 1);
-      }
-    }
-
-    function update() {
-      if (lives <= 0 || paused || !gameStarted) return;
-      if (keys["ArrowLeft"] && basket.x > 0) basket.x -= basket.speed;
-      if (keys["ArrowRight"] && basket.x < canvas.width - basket.width) basket.x += basket.speed;
-
-      objects.forEach((obj, i) => {
-        obj.y += obj.speed;
-        if (obj.y + obj.size > basket.y &&
-            obj.x < basket.x + basket.width &&
-            obj.x + obj.size > basket.x) {
-          score += obj.points;
-          catchSound.currentTime = 0;
-          catchSound.play();
-          spawnStar(obj.x, obj.y);
-          objects.splice(i, 1);
-        } else if (obj.y > canvas.height) {
-          objects.splice(i, 1);
-          lives--;
-        }
-      });
-
-      obstacles.forEach((ob, i) => {
-        ob.y += ob.speed;
-        if (ob.y + ob.height > basket.y &&
-            ob.x < basket.x + basket.width &&
-            ob.x + ob.width > basket.x) {
-          obstacles.splice(i, 1);
-          lives--;
-        } else if (ob.y > canvas.height) {
-          obstacles.splice(i, 1);
-        }
-      });
+    function updateGame() {
+      if (paused) return;
 
       if (Date.now() - levelTimer > levelDuration) {
         level++;
-        levelTimer = Date.now();
         gameSpeed += 0.5;
-        levelUpSound.play();
+        levelTimer = Date.now();
         showLevelUp = true;
         levelUpTime = Date.now();
-        document.body.style.background = level % 2 === 0
+        levelUpSound.play();
+        document.body.style.background = (level % 2 === 0)
           ? "linear-gradient(to bottom, #ffecd2, #fcb69f)"
           : "linear-gradient(to bottom, #a1c4fd, #c2e9fb)";
       }
 
-      updateStars();
-      if (score > highScore) {
-        highScore = score;
-        localStorage.setItem("highScore", highScore);
+      if (showLevelUp && Date.now() - levelUpTime > 2000) {
+        showLevelUp = false;
       }
-    }
 
-    function drawStars() {
-      stars.forEach(s => {
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 0, ${s.alpha})`;
-        ctx.fill();
+      if (Math.random() < 0.02) spawnObject();
+
+      objects.forEach(obj => obj.y += obj.speed);
+
+      objects = objects.filter(obj => {
+        if (obj.y > canvas.height) {
+          lives--;
+          if (lives <= 0) {
+            gameOverSound.play();
+            resetGame();
+          }
+          return false;
+        }
+        if (
+          obj.y + obj.radius > catcher.y &&
+          obj.x > catcher.x && obj.x < catcher.x + catcher.width
+        ) {
+          score += 10;
+          catchSound.play();
+          return false;
+        }
+        return true;
       });
     }
 
-    function draw() {
+    function drawGame() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#8b4513";
-      ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+      ctx.fillStyle = 'black';
+      ctx.fillRect(catcher.x, catcher.y, catcher.width, catcher.height);
 
       objects.forEach(obj => {
-        ctx.fillStyle = obj.color;
         ctx.beginPath();
-        ctx.arc(obj.x + obj.size / 2, obj.y + obj.size / 2, obj.size / 2, 0, Math.PI * 2);
+        ctx.arc(obj.x, obj.y, obj.radius, 0, Math.PI * 2);
+        ctx.fillStyle = obj.color;
         ctx.fill();
+        ctx.closePath();
       });
 
-      obstacles.forEach(ob => {
-        ctx.fillStyle = "black";
-        ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
-      });
-
-      drawStars();
-      levelDisplay.textContent = "Level: " + level;
-
-      if (showLevelUp) {
-        levelUpMsg.style.display = "block";
-        if (Date.now() - levelUpTime > 2000) {
-          showLevelUp = false;
-          levelUpMsg.style.display = "none";
-        }
-      }
-
-      if (lives <= 0) {
-        if (!gameOverPlayed) {
-          gameOverSound.play();
-          gameOverPlayed = true;
-        }
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "white";
-        ctx.font = "36px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2);
-      }
+      document.getElementById("level").textContent = "Level: " + level;
+      document.getElementById("scoreDisplay").textContent = "Score: " + score;
+      document.getElementById("livesDisplay").textContent = "Lives: " + lives;
+      document.getElementById("levelUpMsg").style.display = showLevelUp ? "block" : "none";
     }
 
-    function loop() {
-      update();
-      draw();
-      scoreDisplay.textContent = "Score: " + score;
-      livesDisplay.textContent = "Lives: " + lives;
-      highScoreDisplay.textContent = "High Score: " + highScore;
-      requestAnimationFrame(loop);
+    function gameLoop() {
+      updateGame();
+      drawGame();
+      requestAnimationFrame(gameLoop);
     }
 
-    setInterval(spawnObject, 1000);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') catcher.x -= catcher.speed;
+      if (e.key === 'ArrowRight') catcher.x += catcher.speed;
+      if (catcher.x < 0) catcher.x = 0;
+      if (catcher.x + catcher.width > canvas.width) catcher.x = canvas.width - catcher.width;
+    });
+
+    document.getElementById("pauseBtn").onclick = () => paused = !paused;
+    document.getElementById("restartBtn").onclick = () => resetGame();
+
     resetGame();
-    loop();
+    gameLoop();
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
