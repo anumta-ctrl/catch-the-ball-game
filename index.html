@@ -92,8 +92,39 @@
   <audio id="levelUpSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
 
   <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+  const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Set canvas to fill the screen
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Base game size (the size you designed for)
+let baseWidth = 480;
+let baseHeight = 640;
+
+// Calculate scale factor to fit screen
+let scale = Math.min(
+  window.innerWidth / baseWidth,
+  window.innerHeight / baseHeight
+);
+
+// Apply scale to context
+ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
+// Optional: Handle screen resize (auto-rescale)
+window.addEventListener("resize", () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  scale = Math.min(
+    window.innerWidth / baseWidth,
+    window.innerHeight / baseHeight
+  );
+
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+});
+
     const scoreDisplay = document.getElementById("score");
     const livesDisplay = document.getElementById("lives");
     const highScoreDisplay = document.getElementById("highScore");
