@@ -4,40 +4,36 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Catch Falling Objects Game</title>
-
   <link rel="manifest" href="manifest.json" />
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(function(registration) {
-        console.log('ServiceWorker registered:', registration.scope);
-      }).catch(function(error) {
-        console.log('ServiceWorker registration failed:', error);
-      });
-    }
-  </script>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
       width: 100%;
+      overflow: hidden;
     }
     body {
       font-family: sans-serif;
       background: linear-gradient(to bottom, #a1c4fd, #c2e9fb);
-      overflow: hidden;
     }
     canvas {
       display: block;
       background-color: #ffffff;
+      margin: auto;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
     }
-    #level, #levelUpMsg, #scoreDisplay, #livesDisplay, #pauseBtn, #restartBtn {
+    #level, #levelUpMsg, #scoreDisplay, #livesDisplay, #pauseBtn, #restartBtn, #countdown, #gameOverMsg {
       position: absolute;
       font-size: 20px;
       color: #333;
       z-index: 10;
     }
-    #levelUpMsg {
+    #levelUpMsg, #gameOverMsg, #countdown {
       font-size: 36px;
       color: #ff4500;
       display: none;
@@ -74,46 +70,48 @@
   <div id="scoreDisplay">Score: 0</div>
   <div id="livesDisplay">Lives: 3</div>
   <div id="levelUpMsg">Level Up!</div>
+  <div id="gameOverMsg">Game Over</div>
+  <div id="countdown">3</div>
   <button id="pauseBtn">Pause</button>
   <button id="restartBtn">Restart</button>
-
   <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const countdownEl = document.getElementById("countdown");
+    const gameOverMsg = document.getElementById("gameOverMsg");
+    const V_WIDTH = 480;
+    const V_HEIGHT = 640;
 
     function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      let scale = Math.min(window.innerWidth / V_WIDTH, window.innerHeight / V_HEIGHT);
+      canvas.width = V_WIDTH * scale;
+      canvas.height = V_HEIGHT * scale;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
     }
 
-    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    let score = 0;
-    let lives = 3;
-    let gameSpeed = 2;
-    let level = 1;
-    let paused = false;
-    let levelTimer = Date.now();
-    let showLevelUp = false;
-    let levelUpTime = 0;
-    let objects = [];
+    let score = 0, lives = 3, gameSpeed = 2, level = 1, paused = false;
+    let levelTimer = Date.now(), showLevelUp = false, levelUpTime = 0, objects = [];
+    let countdown = 3, countdownInterval = null, gameStarted = false;
 
     const catcher = {
-      width: canvas.width * 0.2,
+      width: 80,
       height: 20,
-      x: canvas.width / 2 - (canvas.width * 0.2) / 2,
-      y: canvas.height - 40,
-      speed: canvas.width * 0.01
+      x: V_WIDTH / 2 - 40,
+      y: V_HEIGHT - 40,
+      speed: 12
     };
 
-    const levelDuration = 60000;
-    const levelUpSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
-    const catchSound = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
-    const gameOverSound = new Audio("https://actions.google.com/sounds/v1/cartoon/slide_whistle_to_drum_hit.ogg");
-    const bgMusic = new Audio("https://cdn.pixabay.com/audio/2023/05/12/audio_14ba5c2396.mp3");
-    bgMusic.loop = true;
-    bgMusic.volume = 0.5;
+    const sounds = {
+      levelUp: new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"),
+      catch: new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg"),
+      gameOver: new Audio("https://actions.google.com/sounds/v1/cartoon/slide_whistle_to_drum_hit.ogg"),
+      bg: new Audio("https://cdn.pixabay.com/audio/2023/05/12/audio_14ba5c2396.mp3")
+    };
+    sounds.bg.loop = true;
+    sounds.bg.volume = 0.4;
 
     function resetGame() {
       score = 0;
@@ -124,32 +122,48 @@
       showLevelUp = false;
       objects = [];
       paused = false;
-      bgMusic.play();
+      gameStarted = false;
+      gameOverMsg.style.display = "none";
+      startCountdown();
+    }
+
+    function startCountdown() {
+      countdown = 3;
+      countdownEl.textContent = countdown;
+      countdownEl.style.display = "block";
+      countdownInterval = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+          countdownEl.textContent = countdown;
+        } else {
+          clearInterval(countdownInterval);
+          countdownEl.style.display = "none";
+          gameStarted = true;
+          sounds.bg.play();
+        }
+      }, 1000);
     }
 
     function spawnObject() {
       objects.push({
-        x: Math.random() * (canvas.width - 30),
+        x: Math.random() * (V_WIDTH - 30),
         y: 0,
-        radius: canvas.width * 0.03,
+        radius: 10,
         color: '#' + Math.floor(Math.random()*16777215).toString(16),
         speed: gameSpeed + Math.random()
       });
     }
 
     function updateGame() {
-      if (paused) return;
+      if (paused || !gameStarted) return;
 
-      if (Date.now() - levelTimer > levelDuration) {
+      if (Date.now() - levelTimer > 60000) {
         level++;
         gameSpeed += 0.5;
         levelTimer = Date.now();
         showLevelUp = true;
         levelUpTime = Date.now();
-        levelUpSound.play();
-        document.body.style.background = (level % 2 === 0)
-          ? "linear-gradient(to bottom, #ffecd2, #fcb69f)"
-          : "linear-gradient(to bottom, #a1c4fd, #c2e9fb)";
+        sounds.levelUp.play();
       }
 
       if (showLevelUp && Date.now() - levelUpTime > 2000) {
@@ -161,11 +175,13 @@
       objects.forEach(obj => obj.y += obj.speed);
 
       objects = objects.filter(obj => {
-        if (obj.y > canvas.height) {
+        if (obj.y > V_HEIGHT) {
           lives--;
           if (lives <= 0) {
-            gameOverSound.play();
-            resetGame();
+            sounds.gameOver.play();
+            gameOverMsg.style.display = "block";
+            gameStarted = false;
+            return false;
           }
           return false;
         }
@@ -174,7 +190,7 @@
           obj.x > catcher.x && obj.x < catcher.x + catcher.width
         ) {
           score += 10;
-          catchSound.play();
+          sounds.catch.play();
           return false;
         }
         return true;
@@ -182,7 +198,7 @@
     }
 
     function drawGame() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, V_WIDTH, V_HEIGHT);
       ctx.fillStyle = 'black';
       ctx.fillRect(catcher.x, catcher.y, catcher.width, catcher.height);
 
@@ -210,7 +226,23 @@
       if (e.key === 'ArrowLeft') catcher.x -= catcher.speed;
       if (e.key === 'ArrowRight') catcher.x += catcher.speed;
       if (catcher.x < 0) catcher.x = 0;
-      if (catcher.x + catcher.width > canvas.width) catcher.x = canvas.width - catcher.width;
+      if (catcher.x + catcher.width > V_WIDTH) catcher.x = V_WIDTH - catcher.width;
+    });
+
+    let lastTouchX = null;
+    canvas.addEventListener("touchstart", e => {
+      lastTouchX = e.touches[0].clientX;
+    });
+    canvas.addEventListener("touchmove", e => {
+      let touchX = e.touches[0].clientX;
+      if (lastTouchX !== null) {
+        let deltaX = touchX - lastTouchX;
+        catcher.x += deltaX / (canvas.width / V_WIDTH);
+        if (catcher.x < 0) catcher.x = 0;
+        if (catcher.x + catcher.width > V_WIDTH) catcher.x = V_WIDTH - catcher.width;
+      }
+      lastTouchX = touchX;
+      e.preventDefault();
     });
 
     document.getElementById("pauseBtn").onclick = () => paused = !paused;
