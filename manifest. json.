@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#a1c4fd",
-  "description": "A fun game where you catch balls and avoid boxes!",
+  "description": "A fun and addictive game where you catch falling balls and avoid the boxes. Score points and level up!",
   "icons": [
     {
       "src": "icon-192.png",
@@ -13,10 +13,9 @@
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
-      "sizes": "512x512",
+      "src": "icon-510.png",
+      "sizes": "510x510",
       "type": "image/png"
     }
   ]
 }
-
