@@ -22,10 +22,7 @@
       background-color: #ffffff;
       margin: auto;
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
     }
     #level, #levelUpMsg, #scoreDisplay, #livesDisplay, #pauseBtn, #restartBtn, #countdown, #gameOverMsg {
       position: absolute;
@@ -40,8 +37,7 @@
       background: white;
       padding: 20px;
       border-radius: 15px;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
     }
     #level { top: 10px; left: 10px; }
@@ -54,14 +50,8 @@
       border-radius: 8px;
       cursor: pointer;
     }
-    #pauseBtn {
-      bottom: 60px;
-      right: 10px;
-    }
-    #restartBtn {
-      bottom: 10px;
-      right: 10px;
-    }
+    #pauseBtn { bottom: 60px; right: 10px; }
+    #restartBtn { bottom: 10px; right: 10px; }
   </style>
 </head>
 <body>
@@ -101,7 +91,9 @@
       height: 20,
       x: V_WIDTH / 2 - 40,
       y: V_HEIGHT - 40,
-      speed: 12
+      speed: 7,
+      moveLeft: false,
+      moveRight: false
     };
 
     const sounds = {
@@ -145,13 +137,27 @@
     }
 
     function spawnObject() {
-      objects.push({
-        x: Math.random() * (V_WIDTH - 30),
-        y: 0,
-        radius: 10,
-        color: '#' + Math.floor(Math.random()*16777215).toString(16),
-        speed: gameSpeed + Math.random()
-      });
+      const isBox = Math.random() < 0.3;
+      if (isBox) {
+        objects.push({
+          x: Math.random() * (V_WIDTH - 30),
+          y: 0,
+          width: 20,
+          height: 20,
+          color: 'brown',
+          speed: gameSpeed + Math.random(),
+          type: 'box'
+        });
+      } else {
+        objects.push({
+          x: Math.random() * (V_WIDTH - 20),
+          y: 0,
+          radius: 10,
+          color: '#' + Math.floor(Math.random()*16777215).toString(16),
+          speed: gameSpeed + Math.random(),
+          type: 'ball'
+        });
+      }
     }
 
     function updateGame() {
@@ -170,31 +176,53 @@
         showLevelUp = false;
       }
 
-      if (Math.random() < 0.02) spawnObject();
+      if (Math.random() < 0.02) spawnObject(); // Fewer objects per frame
 
       objects.forEach(obj => obj.y += obj.speed);
 
       objects = objects.filter(obj => {
-        if (obj.y > V_HEIGHT) {
-          lives--;
-          if (lives <= 0) {
-            sounds.gameOver.play();
-            gameOverMsg.style.display = "block";
-            gameStarted = false;
-            return false;
+        const objBottom = obj.y + (obj.radius || obj.height);
+        const objCenter = obj.x + (obj.radius || obj.width / 2);
+
+        if (objBottom > V_HEIGHT) {
+          if (obj.type === 'ball') {
+            lives--;
+            if (lives <= 0) {
+              sounds.gameOver.play();
+              gameOverMsg.style.display = "block";
+              gameStarted = false;
+            }
           }
           return false;
         }
-        if (
-          obj.y + obj.radius > catcher.y &&
-          obj.x > catcher.x && obj.x < catcher.x + catcher.width
-        ) {
-          score += 10;
-          sounds.catch.play();
-          return false;
+
+        const isCaught = (
+          objBottom > catcher.y &&
+          objCenter > catcher.x && objCenter < catcher.x + catcher.width
+        );
+
+        if (isCaught) {
+          if (obj.type === 'box') {
+            lives--;
+            if (lives <= 0) {
+              sounds.gameOver.play();
+              gameOverMsg.style.display = "block";
+              gameStarted = false;
+            }
+            return false;
+          } else {
+            score += 10;
+            sounds.catch.play();
+            return false;
+          }
         }
         return true;
       });
+
+      if (catcher.moveLeft) catcher.x -= catcher.speed;
+      if (catcher.moveRight) catcher.x += catcher.speed;
+      if (catcher.x < 0) catcher.x = 0;
+      if (catcher.x + catcher.width > V_WIDTH) catcher.x = V_WIDTH - catcher.width;
     }
 
     function drawGame() {
@@ -203,11 +231,15 @@
       ctx.fillRect(catcher.x, catcher.y, catcher.width, catcher.height);
 
       objects.forEach(obj => {
-        ctx.beginPath();
-        ctx.arc(obj.x, obj.y, obj.radius, 0, Math.PI * 2);
         ctx.fillStyle = obj.color;
-        ctx.fill();
-        ctx.closePath();
+        if (obj.type === 'ball') {
+          ctx.beginPath();
+          ctx.arc(obj.x, obj.y, obj.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.closePath();
+        } else {
+          ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+        }
       });
 
       document.getElementById("level").textContent = "Level: " + level;
@@ -223,10 +255,12 @@
     }
 
     document.addEventListener('keydown', e => {
-      if (e.key === 'ArrowLeft') catcher.x -= catcher.speed;
-      if (e.key === 'ArrowRight') catcher.x += catcher.speed;
-      if (catcher.x < 0) catcher.x = 0;
-      if (catcher.x + catcher.width > V_WIDTH) catcher.x = V_WIDTH - catcher.width;
+      if (e.key === 'ArrowLeft') catcher.moveLeft = true;
+      if (e.key === 'ArrowRight') catcher.moveRight = true;
+    });
+    document.addEventListener('keyup', e => {
+      if (e.key === 'ArrowLeft') catcher.moveLeft = false;
+      if (e.key === 'ArrowRight') catcher.moveRight = false;
     });
 
     let lastTouchX = null;
