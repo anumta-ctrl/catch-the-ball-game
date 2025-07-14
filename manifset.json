@@ -5,6 +5,7 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#a1c4fd",
+  "description": "A fun game where you catch balls and avoid boxes!",
   "icons": [
     {
       "src": "icon-192.png",
